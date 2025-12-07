@@ -133,14 +133,15 @@ Format your response with clear sections and bullet points for readability.`;
 
     // Call Gemini API
     console.log('Calling Gemini API for compliance assistant...');
+    console.log('API Key present:', apiKey ? 'Yes' : 'No');
+    console.log('Question:', question);
     
     const geminiResponse = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
         },
         body: JSON.stringify({
           contents: [{

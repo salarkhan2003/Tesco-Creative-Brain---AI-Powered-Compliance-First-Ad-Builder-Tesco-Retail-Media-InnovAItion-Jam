@@ -1,0 +1,73 @@
+========================================
+🔑 YOUR API KEY IS INVALID!
+========================================
+
+The error says:
+"API key not valid. Please pass a valid API key."
+
+This means the key in your .env.local file is NOT a real Google API key.
+
+========================================
+GET A REAL API KEY (FREE - 2 MINUTES)
+========================================
+
+Step 1: Open this link in your browser
+https://aistudio.google.com/app/apikey
+
+Step 2: Sign in with your Google account
+
+Step 3: Click "Create API Key" button
+
+Step 4: Select "Create API key in new project"
+
+Step 5: COPY the generated key
+It will look like: AIzaSyABC123def456GHI789jkl012MNO345pqr
+
+Step 6: Open this file:
+E:\PROJECTS\TESCO RETAIL PROJECT\tesco-creative-brain\.env.local
+
+Step 7: Replace the GEMINI_API_KEY line with your new key:
+GEMINI_API_KEY=AIzaSyABC123def456GHI789jkl012MNO345pqr
+
+Step 8: Save the file
+
+Step 9: Restart your server:
+Press Ctrl+C to stop
+Then run: npm run dev
+
+Step 10: Test it!
+Open http://localhost:3000
+Click "Run AI Review" - should work now!
+Open chatbot - should respond now!
+
+========================================
+TEST YOUR NEW KEY
+========================================
+
+After updating .env.local and restarting:
+
+cd tesco-creative-brain
+node test-api-key.js
+
+Should show: ✅ SUCCESS! API is working!
+
+========================================
+FREE TIER LIMITS
+========================================
+
+✅ 60 requests per minute
+✅ 1,500 requests per day  
+✅ 1 million tokens per month
+✅ NO CREDIT CARD REQUIRED
+
+Perfect for your demo!
+
+========================================
+QUICK LINK
+========================================
+
+https://aistudio.google.com/app/apikey
+
+Copy this link and open in browser NOW!
+
+========================================

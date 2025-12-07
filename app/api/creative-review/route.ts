@@ -42,21 +42,27 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey.trim() === '') {
       console.error('GEMINI_API_KEY not set or empty');
-      
+
       // Fallback: provide basic review based on warnings
       const numPackshots = layoutSummary?.numPackshots ?? 0;
-      
+
+      // Always check for packshots first
+      if (numPackshots === 0) {
+        return NextResponse.json<ReviewResponse>({
+          status: 'not_ready',
+          summary: 'Please upload at least one packshot image to create your creative.',
+          suggestions: [
+            'Click "Upload Images" button to add 1-3 product images',
+            'Packshots are required for Tesco creatives'
+          ],
+        });
+      }
+
       if (warnings.length === 0 && numPackshots > 0) {
         return NextResponse.json<ReviewResponse>({
           status: 'ready',
           summary: 'Your creative appears compliant with Tesco guidelines based on automated checks.',
           suggestions: [],
-        });
-      } else if (numPackshots === 0) {
-        return NextResponse.json<ReviewResponse>({
-          status: 'not_ready',
-          summary: 'Please upload at least one packshot image to create your creative.',
-          suggestions: ['Upload 1-3 product images to get started'],
         });
       } else {
         return NextResponse.json<ReviewResponse>({
@@ -115,14 +121,15 @@ Only return valid JSON. No extra text.`;
 
     // Call Gemini API
     console.log('Calling Gemini API for creative review...');
-    
+    console.log('API Key present:', apiKey ? 'Yes' : 'No');
+    console.log('API Key length:', apiKey?.length);
+
     const geminiResponse = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
         },
         body: JSON.stringify({
           contents: [{
@@ -141,15 +148,27 @@ Only return valid JSON. No extra text.`;
     if (!geminiResponse.ok) {
       const errorText = await geminiResponse.text();
       console.error('Gemini API error:', geminiResponse.status, errorText);
-      
+
       // Fallback based on warnings
       const numPackshots = layoutSummary?.numPackshots ?? 0;
-      
+
+      // Always check for packshots first
+      if (numPackshots === 0) {
+        return NextResponse.json<ReviewResponse>({
+          status: 'not_ready',
+          summary: 'Please upload at least one packshot image to create your creative.',
+          suggestions: [
+            'Click "Upload Images" button to add 1-3 product images',
+            'Packshots are required for Tesco creatives'
+          ],
+        });
+      }
+
       if (warnings.length === 0 && numPackshots > 0) {
         return NextResponse.json<ReviewResponse>({
           status: 'ready',
-          summary: 'Your creative appears compliant based on automated checks. (AI review unavailable)',
-          suggestions: [],
+          summary: 'Your creative appears compliant based on automated checks. (Get a real Gemini API key for AI-powered reviews)',
+          suggestions: ['Visit https://aistudio.google.com/app/apikey to get a free API key'],
         });
       } else {
         return NextResponse.json<ReviewResponse>({
@@ -162,7 +181,7 @@ Only return valid JSON. No extra text.`;
 
     const data = await geminiResponse.json();
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    
+
     if (!generatedText) {
       throw new Error('No text generated from Gemini');
     }
@@ -178,7 +197,7 @@ Only return valid JSON. No extra text.`;
       }
     } catch (parseError) {
       console.error('Failed to parse Gemini response:', parseError);
-      
+
       // Fallback based on warnings count
       if (warnings.length === 0) {
         review = {
@@ -199,7 +218,7 @@ Only return valid JSON. No extra text.`;
 
   } catch (error) {
     console.error('Creative review error:', error);
-    
+
     return NextResponse.json<ReviewResponse>(
       {
         status: 'unknown',

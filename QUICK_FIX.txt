@@ -1,0 +1,60 @@
+═══════════════════════════════════════════════════════════
+  🚀 QUICK FIX - Run These Commands
+═══════════════════════════════════════════════════════════
+
+1. GET API KEY (2 min)
+   Visit: https://aistudio.google.com/app/apikey
+   Copy your key
+
+2. UPDATE .env.local
+   Open: tesco-creative-brain/.env.local
+   Replace: GEMINI_API_KEY=your_new_key_here
+   Save file
+
+3. TEST API KEY
+   cd "E:\PROJECTS\TESCO RETAIL PROJECT\tesco-creative-brain"
+   node test-api-key.js
+   
+   Should see: ✅ SUCCESS! API is working!
+
+4. START SERVER
+   npm run dev
+   
+   Open: http://localhost:3000
+
+5. TEST FEATURES
+   ✅ Upload images
+   ✅ Click "Run AI Review"
+   ✅ Open chatbot (blue button)
+   ✅ Ask: "What are safe zone rules?"
+
+═══════════════════════════════════════════════════════════
+  ✅ WHAT'S FIXED
+═══════════════════════════════════════════════════════════
+
+✅ Input text now visible (dark gray on white)
+✅ AI Review validates images first
+✅ API calls use correct format
+✅ Better error messages
+✅ Test script created
+
+═══════════════════════════════════════════════════════════
+  🎯 EXPECTED RESULTS
+═══════════════════════════════════════════════════════════
+
+WITHOUT IMAGES:
+  AI Review → "Please upload at least one packshot"
+
+WITH IMAGES:
+  AI Review → Real AI analysis with suggestions
+  Chatbot → Conversational AI responses
+  
+═══════════════════════════════════════════════════════════
+  📞 NEED HELP?
+═══════════════════════════════════════════════════════════
+
+Read: COMPLETE_FIX_GUIDE.md
+Test: node test-api-key.js
+API Key: https://aistudio.google.com/app/apikey
+
+═══════════════════════════════════════════════════════════

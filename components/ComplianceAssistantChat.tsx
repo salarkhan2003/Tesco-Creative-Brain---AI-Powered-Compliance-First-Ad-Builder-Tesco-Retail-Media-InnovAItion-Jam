@@ -231,7 +231,7 @@ Try asking again or check the compliance panel for real-time validation.`
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about Tesco guidelines..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-gray-900 bg-white placeholder-gray-400"
             disabled={loading}
           />
           <button
