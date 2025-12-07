@@ -41,8 +41,8 @@ export default function Home() {
 
   // Generate layout for compliance checks
   const layout = useMemo(
-    () => generateLayout(activeTab, packshots, headline, fontSize),
-    [activeTab, packshots, headline, fontSize]
+    () => generateLayout(activeTab, packshots, headline, fontSize, layoutMode),
+    [activeTab, packshots, headline, fontSize, layoutMode]
   );
 
   // Run compliance checks with enhanced options
@@ -224,6 +224,7 @@ export default function Home() {
                 textColor={textColor}
                 showSafeZones={showSafeZones}
                 showGrid={showGrid}
+                zoom={zoom}
               />
 
               <div className="flex items-center justify-center gap-2 mt-4 text-xs text-gray-600 bg-gray-50 py-2 px-4 rounded-lg">

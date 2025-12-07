@@ -36,14 +36,14 @@ export async function drawCreative(
   // Clear canvas
   ctx.clearRect(0, 0, layout.width, layout.height);
   
-  // Draw grid if enabled (before other elements)
-  if (showGrid) {
-    drawGrid(ctx, layout.width, layout.height);
-  }
-  
   // Draw each element
   for (const element of layout.elements) {
     await drawElement(ctx, element, backgroundColor, textStyle);
+  }
+  
+  // Draw grid if enabled (after background, before safe zones)
+  if (showGrid) {
+    drawGrid(ctx, layout.width, layout.height);
   }
   
   // Draw safe zone guides if enabled
@@ -128,11 +128,30 @@ async function drawElement(
       break;
       
     case 'packshot':
-      // Draw packshot image
+      // Draw packshot image with transformations
       if (element.imageUrl) {
         try {
           const img = await loadImage(element.imageUrl);
+          
+          ctx.save();
+          
+          // Apply transformations if element has them
+          const centerX = position.x + position.width / 2;
+          const centerY = position.y + position.height / 2;
+          
+          // Move to center, apply rotation, move back
+          ctx.translate(centerX, centerY);
+          if (element.rotation) {
+            ctx.rotate((element.rotation * Math.PI) / 180);
+          }
+          if (element.scale) {
+            ctx.scale(element.scale, element.scale);
+          }
+          ctx.translate(-centerX, -centerY);
+          
           ctx.drawImage(img, position.x, position.y, position.width, position.height);
+          
+          ctx.restore();
         } catch (error) {
           // Fallback: draw placeholder
           ctx.fillStyle = '#e0e0e0';
@@ -166,12 +185,13 @@ async function drawElement(
  */
 function drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number): void {
   ctx.save();
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-  ctx.lineWidth = 1;
   
   const gridSize = 50; // 50px grid
   
-  // Vertical lines
+  // Draw minor grid lines (lighter)
+  ctx.strokeStyle = 'rgba(100, 100, 255, 0.15)';
+  ctx.lineWidth = 1;
+  
   for (let x = 0; x <= width; x += gridSize) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
@@ -179,8 +199,25 @@ function drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number):
     ctx.stroke();
   }
   
-  // Horizontal lines
   for (let y = 0; y <= height; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+  
+  // Draw major grid lines every 100px (darker)
+  ctx.strokeStyle = 'rgba(100, 100, 255, 0.3)';
+  ctx.lineWidth = 2;
+  
+  for (let x = 0; x <= width; x += 100) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+  
+  for (let y = 0; y <= height; y += 100) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(width, y);

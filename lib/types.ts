@@ -32,6 +32,8 @@ export interface LayoutElement {
   position: ElementPosition;
   content?: string;
   imageUrl?: string;
+  scale?: number;
+  rotation?: number;
 }
 
 export interface CreativeLayout {

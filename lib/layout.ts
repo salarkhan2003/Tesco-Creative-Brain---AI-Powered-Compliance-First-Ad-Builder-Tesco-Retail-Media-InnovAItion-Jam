@@ -4,6 +4,25 @@
 import { CreativeLayout, LayoutElement, PackshotImage, TextStyle } from './types';
 
 /**
+ * Helper to create packshot element with transformations
+ */
+function createPackshotElement(
+  packshot: PackshotImage,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): LayoutElement {
+  return {
+    type: 'packshot',
+    position: { x, y, width, height },
+    imageUrl: packshot.dataUrl,
+    scale: packshot.scale,
+    rotation: packshot.rotation,
+  };
+}
+
+/**
  * Calculate layout for 1080x1080 square format
  * Supports both old (fontSize) and new (textStyle) API for backward compatibility
  */
@@ -47,72 +66,54 @@ export function calculateSquareLayout(
     
     if (packshots.length === 1) {
       // Single packshot - centered
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: (width - packshotSize) / 2,
-          y: packshotY,
-          width: packshotSize,
-          height: packshotSize,
-        },
-        imageUrl: packshots[0].dataUrl,
-      });
+      elements.push(createPackshotElement(
+        packshots[0],
+        (width - packshotSize) / 2,
+        packshotY,
+        packshotSize,
+        packshotSize
+      ));
     } else if (packshots.length === 2) {
       // Two packshots - side by side with overlap
       const spacing = 200;
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: width / 2 - packshotSize - spacing / 2,
-          y: packshotY,
-          width: packshotSize,
-          height: packshotSize,
-        },
-        imageUrl: packshots[0].dataUrl,
-      });
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: width / 2 + spacing / 2,
-          y: packshotY,
-          width: packshotSize,
-          height: packshotSize,
-        },
-        imageUrl: packshots[1].dataUrl,
-      });
+      elements.push(createPackshotElement(
+        packshots[0],
+        width / 2 - packshotSize - spacing / 2,
+        packshotY,
+        packshotSize,
+        packshotSize
+      ));
+      elements.push(createPackshotElement(
+        packshots[1],
+        width / 2 + spacing / 2,
+        packshotY,
+        packshotSize,
+        packshotSize
+      ));
     } else {
       // Three packshots - overlapping arrangement
       const smallSize = 320;
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: width / 2 - packshotSize / 2,
-          y: packshotY - 50,
-          width: packshotSize,
-          height: packshotSize,
-        },
-        imageUrl: packshots[0].dataUrl,
-      });
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: 100,
-          y: packshotY + 100,
-          width: smallSize,
-          height: smallSize,
-        },
-        imageUrl: packshots[1].dataUrl,
-      });
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: width - 100 - smallSize,
-          y: packshotY + 100,
-          width: smallSize,
-          height: smallSize,
-        },
-        imageUrl: packshots[2].dataUrl,
-      });
+      elements.push(createPackshotElement(
+        packshots[0],
+        width / 2 - packshotSize / 2,
+        packshotY - 50,
+        packshotSize,
+        packshotSize
+      ));
+      elements.push(createPackshotElement(
+        packshots[1],
+        100,
+        packshotY + 100,
+        smallSize,
+        smallSize
+      ));
+      elements.push(createPackshotElement(
+        packshots[2],
+        width - 100 - smallSize,
+        packshotY + 100,
+        smallSize,
+        smallSize
+      ));
     }
   }
   
@@ -174,73 +175,55 @@ export function calculateVerticalLayout(
     
     if (packshots.length === 1) {
       // Single packshot - centered
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: (width - packshotSize) / 2,
-          y: packshotY,
-          width: packshotSize,
-          height: packshotSize,
-        },
-        imageUrl: packshots[0].dataUrl,
-      });
+      elements.push(createPackshotElement(
+        packshots[0],
+        (width - packshotSize) / 2,
+        packshotY,
+        packshotSize,
+        packshotSize
+      ));
     } else if (packshots.length === 2) {
       // Two packshots - stacked vertically
       const smallSize = 450;
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: (width - smallSize) / 2,
-          y: 650,
-          width: smallSize,
-          height: smallSize,
-        },
-        imageUrl: packshots[0].dataUrl,
-      });
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: (width - smallSize) / 2,
-          y: 1150,
-          width: smallSize,
-          height: smallSize,
-        },
-        imageUrl: packshots[1].dataUrl,
-      });
+      elements.push(createPackshotElement(
+        packshots[0],
+        (width - smallSize) / 2,
+        650,
+        smallSize,
+        smallSize
+      ));
+      elements.push(createPackshotElement(
+        packshots[1],
+        (width - smallSize) / 2,
+        1150,
+        smallSize,
+        smallSize
+      ));
     } else {
       // Three packshots - creative arrangement
       const mainSize = 450;
       const smallSize = 350;
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: (width - mainSize) / 2,
-          y: 600,
-          width: mainSize,
-          height: mainSize,
-        },
-        imageUrl: packshots[0].dataUrl,
-      });
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: 80,
-          y: 1100,
-          width: smallSize,
-          height: smallSize,
-        },
-        imageUrl: packshots[1].dataUrl,
-      });
-      elements.push({
-        type: 'packshot',
-        position: {
-          x: width - 80 - smallSize,
-          y: 1100,
-          width: smallSize,
-          height: smallSize,
-        },
-        imageUrl: packshots[2].dataUrl,
-      });
+      elements.push(createPackshotElement(
+        packshots[0],
+        (width - mainSize) / 2,
+        600,
+        mainSize,
+        mainSize
+      ));
+      elements.push(createPackshotElement(
+        packshots[1],
+        80,
+        1100,
+        smallSize,
+        smallSize
+      ));
+      elements.push(createPackshotElement(
+        packshots[2],
+        width - 80 - smallSize,
+        1100,
+        smallSize,
+        smallSize
+      ));
     }
   }
   
@@ -267,8 +250,41 @@ export function generateLayout(
   adSize: '1080x1080' | '1080x1920',
   packshots: PackshotImage[],
   headline: string,
-  fontSizeOrTextStyle: number | TextStyle
+  fontSizeOrTextStyle: number | TextStyle,
+  layoutMode: 'auto' | 'manual' = 'auto'
 ): CreativeLayout {
+  // For manual mode, use packshot positions if available
+  if (layoutMode === 'manual') {
+    // Use custom positions from packshots if they have them
+    const layout = adSize === '1080x1080' 
+      ? calculateSquareLayout(packshots, headline, fontSizeOrTextStyle)
+      : calculateVerticalLayout(packshots, headline, fontSizeOrTextStyle);
+    
+    // Apply manual positioning if packshots have x/y coordinates
+    layout.elements = layout.elements.map(element => {
+      if (element.type === 'packshot' && element.imageUrl) {
+        const packshot = packshots.find(p => p.dataUrl === element.imageUrl);
+        if (packshot && packshot.x !== undefined && packshot.y !== undefined) {
+          // Convert percentage to pixels
+          const x = (packshot.x / 100) * layout.width - element.position.width / 2;
+          const y = (packshot.y / 100) * layout.height - element.position.height / 2;
+          return {
+            ...element,
+            position: {
+              ...element.position,
+              x: Math.max(0, Math.min(x, layout.width - element.position.width)),
+              y: Math.max(0, Math.min(y, layout.height - element.position.height)),
+            }
+          };
+        }
+      }
+      return element;
+    });
+    
+    return layout;
+  }
+  
+  // Auto mode - use default layouts
   if (adSize === '1080x1080') {
     return calculateSquareLayout(packshots, headline, fontSizeOrTextStyle);
   } else {

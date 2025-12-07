@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Real mode: call remove.bg API
+    // Real mode: call remove.bg API with retry logic
     console.log('Calling remove.bg API with key:', apiKey.substring(0, 10) + '...');
     
     // Convert File to Buffer for remove.bg
@@ -55,19 +55,52 @@ export async function POST(request: NextRequest) {
     removeBgFormData.append('image_file', imageBlob, imageFile.name);
     removeBgFormData.append('size', 'auto');
 
-    const response = await fetch('https://api.remove.bg/v1.0/removebg', {
-      method: 'POST',
-      headers: {
-        'X-Api-Key': apiKey,
-      },
-      body: removeBgFormData,
-    });
+    let response;
+    let lastError;
+    
+    // Retry up to 3 times
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`remove.bg API attempt ${attempt}/3...`);
+        
+        response = await fetch('https://api.remove.bg/v1.0/removebg', {
+          method: 'POST',
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+          body: removeBgFormData,
+        });
+        
+        console.log('remove.bg response status:', response.status);
+        
+        if (response.ok) {
+          break; // Success, exit retry loop
+        }
+        
+        lastError = await response.text();
+        
+        // Don't retry on client errors (400-499)
+        if (response.status >= 400 && response.status < 500) {
+          break;
+        }
+        
+        // Wait before retry (exponential backoff)
+        if (attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : 'Network error';
+        console.error(`Attempt ${attempt} failed:`, lastError);
+        
+        if (attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+      }
+    }
 
-    console.log('remove.bg response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('remove.bg API error:', response.status, errorText);
+    if (!response || !response.ok) {
+      const errorText = lastError || 'Unknown error';
+      console.error('remove.bg API error:', response?.status, errorText);
       
       // If API fails, return original image with error message
       const buffer = await imageFile.arrayBuffer();

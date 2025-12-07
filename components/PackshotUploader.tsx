@@ -11,6 +11,7 @@ interface Props {
 
 export default function PackshotUploader({ packshots, onPackshotsChange, maxPackshots = 3 }: Props) {
   const [removingBg, setRemovingBg] = useState<string | null>(null);
+  const [originalImages, setOriginalImages] = useState<Record<string, string>>({});
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -29,9 +30,10 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
           dataUrl,
           file,
           backgroundRemoved: false,
-          scale: 1.0,  // Default scale
-          x: 50,       // Center horizontally
-          y: 50,       // Center vertically
+          scale: 1.0,     // Default scale
+          rotation: 0,    // Default rotation
+          x: 50,          // Center horizontally (percentage)
+          y: 50,          // Center vertically (percentage)
         });
         
         if (newPackshots.length === Math.min(files.length, maxPackshots - packshots.length)) {
@@ -49,6 +51,11 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
     if (!packshot) {
       setRemovingBg(null);
       return;
+    }
+
+    // Store original image if not already stored
+    if (!originalImages[id]) {
+      setOriginalImages(prev => ({ ...prev, [id]: packshot.dataUrl }));
     }
 
     try {
@@ -97,6 +104,21 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
     } finally {
       setRemovingBg(null);
     }
+  };
+
+  const handleRestoreBackground = (id: string) => {
+    const originalImage = originalImages[id];
+    if (!originalImage) return;
+
+    onPackshotsChange(
+      packshots.map((p) =>
+        p.id === id ? { 
+          ...p, 
+          dataUrl: originalImage, 
+          backgroundRemoved: false
+        } : p
+      )
+    );
   };
 
   const handleRemovePackshot = (id: string) => {
@@ -246,7 +268,43 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
                     </button>
                   )}
                   
-                  {packshot.backgroundRemoved && (
+                  {packshot.backgroundRemoved && originalImages[packshot.id] && (
+                    <>
+                      <button
+                        onClick={() => handleRestoreBackground(packshot.id)}
+                        className="flex-1 text-xs px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm hover:shadow flex items-center justify-center gap-1"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                        Restore BG
+                      </button>
+                      <button
+                        onClick={() => handleRemoveBackground(packshot.id)}
+                        disabled={removingBg === packshot.id}
+                        className="flex-1 text-xs px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-sm hover:shadow flex items-center justify-center gap-1"
+                      >
+                        {removingBg === packshot.id ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Removing...
+                          </span>
+                        ) : (
+                          <>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Remove Again
+                          </>
+                        )}
+                      </button>
+                    </>
+                  )}
+                  
+                  {packshot.backgroundRemoved && !originalImages[packshot.id] && (
                     <div className="flex-1 flex items-center justify-center gap-1 text-xs text-green-700 bg-green-50 py-2 rounded-lg font-medium">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />

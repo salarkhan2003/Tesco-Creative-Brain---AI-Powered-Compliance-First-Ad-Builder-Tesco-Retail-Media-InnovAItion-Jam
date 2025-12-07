@@ -15,6 +15,7 @@ interface Props {
   textColor?: string;
   showSafeZones?: boolean;
   showGrid?: boolean;
+  zoom?: number;
 }
 
 export default function CanvasPreview({
@@ -27,6 +28,7 @@ export default function CanvasPreview({
   textColor = '#000000',
   showSafeZones = true,
   showGrid = false,
+  zoom = 100,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -49,16 +51,18 @@ export default function CanvasPreview({
     });
   }, [adSize, packshots, headline, backgroundColor, fontSize, textAlign, textColor, showSafeZones, showGrid]);
 
-  // Base scale for display
+  // Base scale for display with zoom applied
   const baseScale = adSize === '1080x1920' ? 0.25 : 0.35;
+  const zoomScale = zoom / 100;
+  const finalScale = baseScale * zoomScale;
 
   return (
     <div className="flex justify-center items-center bg-gray-100 p-4 rounded overflow-auto">
       <canvas
         ref={canvasRef}
         style={{
-          width: `${1080 * baseScale}px`,
-          height: `${(adSize === '1080x1920' ? 1920 : 1080) * baseScale}px`,
+          width: `${1080 * finalScale}px`,
+          height: `${(adSize === '1080x1920' ? 1920 : 1080) * finalScale}px`,
           border: '1px solid #ccc',
           boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
           imageRendering: 'crisp-edges',
