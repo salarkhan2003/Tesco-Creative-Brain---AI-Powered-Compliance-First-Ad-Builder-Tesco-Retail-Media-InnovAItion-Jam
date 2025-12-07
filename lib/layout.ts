@@ -2,6 +2,11 @@
 // Calculates exact positions for packshots, text, and value tiles
 
 import { CreativeLayout, LayoutElement, PackshotImage, TextStyle } from './types';
+import { 
+  generateSmartLayout, 
+  calculateHeadlinePosition, 
+  adjustForValueTile 
+} from './smart-layout';
 
 /**
  * Helper to create packshot element with transformations
@@ -253,41 +258,69 @@ export function generateLayout(
   fontSizeOrTextStyle: number | TextStyle,
   layoutMode: 'auto' | 'manual' = 'auto'
 ): CreativeLayout {
-  // For manual mode, use packshot positions if available
-  if (layoutMode === 'manual') {
-    // Use custom positions from packshots if they have them
+  const fontSize = typeof fontSizeOrTextStyle === 'number' 
+    ? fontSizeOrTextStyle 
+    : fontSizeOrTextStyle.fontSize;
+  
+  const width = 1080;
+  const height = adSize === '1080x1920' ? 1920 : 1080;
+  const elements: LayoutElement[] = [];
+  
+  // Background
+  elements.push({
+    type: 'background',
+    position: { x: 0, y: 0, width, height },
+  });
+  
+  // Use smart auto-layout for packshots
+  if (layoutMode === 'auto') {
+    // Generate smart packshot positions
+    const packshotElements = generateSmartLayout(adSize, packshots);
+    const adjustedPackshots = adjustForValueTile(adSize, packshotElements);
+    elements.push(...adjustedPackshots);
+    
+    // Calculate headline position that avoids packshots
+    const headlinePos = calculateHeadlinePosition(adSize, fontSize, adjustedPackshots);
+    elements.push({
+      type: 'headline',
+      position: headlinePos,
+      content: headline,
+    });
+  } else {
+    // Manual mode - use old layout or custom positions
     const layout = adSize === '1080x1080' 
       ? calculateSquareLayout(packshots, headline, fontSizeOrTextStyle)
       : calculateVerticalLayout(packshots, headline, fontSizeOrTextStyle);
     
     // Apply manual positioning if packshots have x/y coordinates
-    layout.elements = layout.elements.map(element => {
+    layout.elements.forEach(element => {
       if (element.type === 'packshot' && element.imageUrl) {
         const packshot = packshots.find(p => p.dataUrl === element.imageUrl);
         if (packshot && packshot.x !== undefined && packshot.y !== undefined) {
           // Convert percentage to pixels
           const x = (packshot.x / 100) * layout.width - element.position.width / 2;
           const y = (packshot.y / 100) * layout.height - element.position.height / 2;
-          return {
-            ...element,
-            position: {
-              ...element.position,
-              x: Math.max(0, Math.min(x, layout.width - element.position.width)),
-              y: Math.max(0, Math.min(y, layout.height - element.position.height)),
-            }
+          element.position = {
+            ...element.position,
+            x: Math.max(0, Math.min(x, layout.width - element.position.width)),
+            y: Math.max(0, Math.min(y, layout.height - element.position.height)),
           };
         }
       }
-      return element;
+      elements.push(element);
     });
-    
-    return layout;
   }
   
-  // Auto mode - use default layouts
-  if (adSize === '1080x1080') {
-    return calculateSquareLayout(packshots, headline, fontSizeOrTextStyle);
-  } else {
-    return calculateVerticalLayout(packshots, headline, fontSizeOrTextStyle);
-  }
+  // Value tile - always at predefined position
+  const valueTilePos = adSize === '1080x1920'
+    ? { x: (width - 160) / 2, y: height - 400, width: 160, height: 160 }
+    : { x: width - 180, y: height - 180, width: 140, height: 140 };
+  
+  elements.push({
+    type: 'valueTile',
+    position: valueTilePos,
+    content: 'VALUE',
+  });
+  
+  return { width, height, elements };
 }

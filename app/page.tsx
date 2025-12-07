@@ -15,6 +15,9 @@ import ProductInfoForm from '@/components/ProductInfoForm';
 import LayoutModeToggle from '@/components/LayoutModeToggle';
 import CanvasToolbar from '@/components/CanvasToolbar';
 import ComplianceSummary from '@/components/ComplianceSummary';
+import CreativeReviewPanel from '@/components/CreativeReviewPanel';
+import ComplianceAssistantButton from '@/components/ComplianceAssistantButton';
+import ComplianceAssistantChat from '@/components/ComplianceAssistantChat';
 
 export default function Home() {
   // Creative state
@@ -38,6 +41,9 @@ export default function Home() {
   const [showSafeZones, setShowSafeZones] = useState(true);
   const [showGrid, setShowGrid] = useState(false);
   const [zoom, setZoom] = useState(100);
+
+  // AI Assistant state
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   // Generate layout for compliance checks
   const layout = useMemo(
@@ -248,6 +254,21 @@ export default function Home() {
               <ComplianceSummary warnings={warnings} />
             </div>
 
+            {/* AI Creative Review */}
+            <CreativeReviewPanel
+              headline={headline}
+              category={category}
+              warnings={warnings}
+              layoutSummary={{
+                format: activeTab === '1080x1080' ? 'square' : 'vertical',
+                hasSafeZoneViolations: warnings.some(w => w.type === 'safe-zone'),
+                numPackshots: packshots.length,
+                hasAlcoholCategory: category === 'Alcohol',
+                hasHumanFlag: packshots.some(p => p.containsHuman),
+                contrastIssue: warnings.some(w => w.message.toLowerCase().includes('contrast')),
+              }}
+            />
+
             {/* Export Buttons */}
             <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
               <ExportButtons
@@ -312,6 +333,15 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* AI Compliance Assistant */}
+      <ComplianceAssistantButton 
+        onClick={() => setAssistantOpen(!assistantOpen)}
+        isOpen={assistantOpen}
+      />
+      {assistantOpen && (
+        <ComplianceAssistantChat onClose={() => setAssistantOpen(false)} />
+      )}
     </div>
   );
 }
