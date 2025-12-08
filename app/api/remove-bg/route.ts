@@ -6,6 +6,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * This endpoint proxies to remove.bg or provides a mock fallback.
  * Set REMOVE_BG_API_KEY environment variable to enable real background removal.
  */
+
+// Fallback API key if env variable not loaded
+const FALLBACK_REMOVE_BG_KEY = 'FkSZorFbVNQb8JAskp79Yt3H';
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -26,22 +30,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for API key
-    const apiKey = process.env.REMOVE_BG_API_KEY;
+    // Check for API key - use fallback if env not available
+    let apiKey = process.env.REMOVE_BG_API_KEY;
 
-    if (!apiKey) {
-      // Mock mode: return original image with a note
-      console.log('REMOVE_BG_API_KEY not set. Returning original image (mock mode).');
-      
-      const buffer = await imageFile.arrayBuffer();
-      const base64 = Buffer.from(buffer).toString('base64');
-      const dataUrl = `data:${imageFile.type};base64,${base64}`;
-
-      return NextResponse.json({
-        imageUrl: dataUrl,
-        mock: true,
-        message: 'Background removal is in mock mode. Set REMOVE_BG_API_KEY to enable real removal.',
-      });
+    if (!apiKey || apiKey.includes('filepath') || apiKey.trim() === '') {
+      console.log('Using fallback REMOVE_BG_API_KEY');
+      apiKey = FALLBACK_REMOVE_BG_KEY;
     }
 
     // Real mode: call remove.bg API with retry logic

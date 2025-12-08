@@ -7,10 +7,20 @@ interface Props {
   packshots: PackshotImage[];
   onPackshotsChange: (packshots: PackshotImage[]) => void;
   maxPackshots?: number;
+  onCategoryDetected?: (category: string) => void;
 }
 
-export default function PackshotUploader({ packshots, onPackshotsChange, maxPackshots = 3 }: Props) {
+interface PackshotAnalysis {
+  productType: string;
+  suggestedCategory: string;
+  qualityScore: number;
+  suggestions: string[];
+}
+
+export default function PackshotUploader({ packshots, onPackshotsChange, maxPackshots = 3, onCategoryDetected }: Props) {
   const [removingBg, setRemovingBg] = useState<string | null>(null);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [analyses, setAnalyses] = useState<Record<string, PackshotAnalysis>>({});
   const [originalImages, setOriginalImages] = useState<Record<string, string>>({});
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -18,10 +28,10 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
     if (!files) return;
 
     const newPackshots: PackshotImage[] = [];
-    
+
     Array.from(files).forEach((file) => {
       if (packshots.length + newPackshots.length >= maxPackshots) return;
-      
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const dataUrl = event.target?.result as string;
@@ -30,12 +40,12 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
           dataUrl,
           file,
           backgroundRemoved: false,
-          scale: 1.0,     // Default scale
-          rotation: 0,    // Default rotation
-          x: 50,          // Center horizontally (percentage)
-          y: 50,          // Center vertically (percentage)
+          scale: 1.0,
+          rotation: 0,
+          x: 50,
+          y: 50,
         });
-        
+
         if (newPackshots.length === Math.min(files.length, maxPackshots - packshots.length)) {
           onPackshotsChange([...packshots, ...newPackshots]);
         }
@@ -46,21 +56,18 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
 
   const handleRemoveBackground = async (id: string) => {
     setRemovingBg(id);
-    
+
     const packshot = packshots.find((p) => p.id === id);
     if (!packshot) {
       setRemovingBg(null);
       return;
     }
 
-    // Store original image if not already stored
     if (!originalImages[id]) {
-      setOriginalImages(prev => ({ ...prev, [id]: packshot.dataUrl }));
+      setOriginalImages((prev: Record<string, string>) => ({ ...prev, [id]: packshot.dataUrl }));
     }
 
     try {
-      console.log('Starting background removal for:', packshot.file.name);
-      
       const formData = new FormData();
       formData.append('image', packshot.file);
 
@@ -70,37 +77,30 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        console.error('Background removal API error:', data);
-        alert(`Background removal failed: ${data.error || 'Unknown error'}\n${data.message || ''}`);
+        alert(`Background removal failed: ${data.error || 'Unknown error'}`);
         setRemovingBg(null);
         return;
       }
 
-      console.log('Background removal response:', data);
-      
-      // Update packshot with new image
       onPackshotsChange(
         packshots.map((p) =>
-          p.id === id ? { 
-            ...p, 
-            dataUrl: data.imageUrl, 
-            backgroundRemoved: !data.mock // Only mark as removed if not mock
+          p.id === id ? {
+            ...p,
+            dataUrl: data.imageUrl,
+            backgroundRemoved: !data.mock
           } : p
         )
       );
-      
-      // Show success message
+
       if (data.mock) {
         alert('Background removal is in mock mode. Add REMOVE_BG_API_KEY to .env.local for real removal.');
-      } else {
-        console.log('Background removed successfully!');
       }
-      
+
     } catch (error) {
       console.error('Background removal error:', error);
-      alert(`Background removal failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nCheck:\n1. REMOVE_BG_API_KEY in .env.local\n2. API key is valid\n3. You have credits remaining`);
+      alert(`Background removal failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setRemovingBg(null);
     }
@@ -112,9 +112,9 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
 
     onPackshotsChange(
       packshots.map((p) =>
-        p.id === id ? { 
-          ...p, 
-          dataUrl: originalImage, 
+        p.id === id ? {
+          ...p,
+          dataUrl: originalImage,
           backgroundRemoved: false
         } : p
       )
@@ -123,6 +123,49 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
 
   const handleRemovePackshot = (id: string) => {
     onPackshotsChange(packshots.filter((p) => p.id !== id));
+    setAnalyses((prev: Record<string, PackshotAnalysis>) => {
+      const newAnalyses = { ...prev };
+      delete newAnalyses[id];
+      return newAnalyses;
+    });
+  };
+
+  const handleAnalyzePackshot = async (id: string) => {
+    const packshot = packshots.find((p) => p.id === id);
+    if (!packshot) return;
+
+    setAnalyzingId(id);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', packshot.file);
+
+      const response = await fetch('/api/packshot-analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      setAnalyses((prev: Record<string, PackshotAnalysis>) => ({ ...prev, [id]: data }));
+
+      if (data.suggestedCategory && onCategoryDetected) {
+        onCategoryDetected(data.suggestedCategory);
+      }
+
+    } catch (error) {
+      console.error('Packshot analysis error:', error);
+      setAnalyses((prev: Record<string, PackshotAnalysis>) => ({
+        ...prev,
+        [id]: {
+          productType: 'Product',
+          suggestedCategory: 'General',
+          qualityScore: 75,
+          suggestions: ['Analysis unavailable - check API configuration'],
+        },
+      }));
+    } finally {
+      setAnalyzingId(null);
+    }
   };
 
   return (
@@ -131,7 +174,7 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
         <label className="block text-sm font-semibold text-gray-700 mb-3">
           Product Images (Packshots) - Max {maxPackshots}
         </label>
-        
+
         {packshots.length < maxPackshots && (
           <label className="cursor-pointer inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium">
             <input
@@ -147,7 +190,7 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
             Upload Images
           </label>
         )}
-        
+
         {packshots.length >= maxPackshots && (
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg border border-red-200">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -162,7 +205,6 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
         {packshots.map((packshot) => (
           <div key={packshot.id} className="relative border-2 border-gray-200 rounded-xl p-4 bg-white hover:border-blue-300 transition-all duration-200 shadow-sm hover:shadow-md">
             <div className="flex gap-4">
-              {/* Image Preview */}
               <div className="flex-shrink-0 w-32 h-32 bg-gray-50 rounded-lg p-2 flex items-center justify-center">
                 <img
                   src={packshot.dataUrl}
@@ -173,10 +215,8 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
                   }}
                 />
               </div>
-              
-              {/* Controls */}
+
               <div className="flex-1 space-y-3">
-                {/* Scale Control */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Scale: {packshot.scale.toFixed(1)}x
@@ -198,8 +238,7 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
                     className="w-full"
                   />
                 </div>
-                
-                {/* Rotation Control */}
+
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Rotation: {packshot.rotation || 0}°
@@ -247,72 +286,41 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
                     </button>
                   </div>
                 </div>
-                
-                {/* Action Buttons */}
-                <div className="flex gap-2">
+
+                <div className="flex gap-2 flex-wrap">
                   {!packshot.backgroundRemoved && (
                     <button
                       onClick={() => handleRemoveBackground(packshot.id)}
                       disabled={removingBg === packshot.id}
                       className="flex-1 text-xs px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-sm hover:shadow"
                     >
-                      {removingBg === packshot.id ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Removing...
-                        </span>
-                      ) : 'Remove BG'}
+                      {removingBg === packshot.id ? 'Removing...' : 'Remove BG'}
                     </button>
                   )}
-                  
+
                   {packshot.backgroundRemoved && originalImages[packshot.id] && (
-                    <>
-                      <button
-                        onClick={() => handleRestoreBackground(packshot.id)}
-                        className="flex-1 text-xs px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm hover:shadow flex items-center justify-center gap-1"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                        </svg>
-                        Restore BG
-                      </button>
-                      <button
-                        onClick={() => handleRemoveBackground(packshot.id)}
-                        disabled={removingBg === packshot.id}
-                        className="flex-1 text-xs px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-sm hover:shadow flex items-center justify-center gap-1"
-                      >
-                        {removingBg === packshot.id ? (
-                          <span className="flex items-center justify-center gap-2">
-                            <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Removing...
-                          </span>
-                        ) : (
-                          <>
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Remove Again
-                          </>
-                        )}
-                      </button>
-                    </>
+                    <button
+                      onClick={() => handleRestoreBackground(packshot.id)}
+                      className="flex-1 text-xs px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm hover:shadow"
+                    >
+                      Restore BG
+                    </button>
                   )}
-                  
-                  {packshot.backgroundRemoved && !originalImages[packshot.id] && (
-                    <div className="flex-1 flex items-center justify-center gap-1 text-xs text-green-700 bg-green-50 py-2 rounded-lg font-medium">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      BG Removed
+
+                  {packshot.backgroundRemoved && (
+                    <div className="flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-1 rounded-lg font-medium">
+                      ✓ BG Removed
                     </div>
                   )}
-                  
+
+                  <button
+                    onClick={() => handleAnalyzePackshot(packshot.id)}
+                    disabled={analyzingId === packshot.id}
+                    className="flex-1 text-xs px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-sm hover:shadow"
+                  >
+                    {analyzingId === packshot.id ? 'Analyzing...' : '🤖 AI Analyze'}
+                  </button>
+
                   <button
                     onClick={() => handleRemovePackshot(packshot.id)}
                     className="flex-1 text-xs px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 font-medium shadow-sm hover:shadow"
@@ -320,6 +328,52 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
                     Remove
                   </button>
                 </div>
+
+                {analyses[packshot.id] && (
+                  <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-purple-800">🤖 AI Analysis</span>
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Product:</span>
+                        <span className="font-medium text-gray-800">{analyses[packshot.id].productType}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Category:</span>
+                        <span className="font-medium text-purple-700">{analyses[packshot.id].suggestedCategory}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Quality:</span>
+                        <div className="flex items-center gap-1">
+                          <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                analyses[packshot.id].qualityScore >= 80 ? 'bg-green-500' :
+                                analyses[packshot.id].qualityScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                              }`}
+                              style={{ width: `${analyses[packshot.id].qualityScore}%` }}
+                            />
+                          </div>
+                          <span className="font-medium text-gray-800">{analyses[packshot.id].qualityScore}%</span>
+                        </div>
+                      </div>
+                      {analyses[packshot.id].suggestions.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-purple-200">
+                          <span className="text-gray-600 font-medium">Suggestions:</span>
+                          <ul className="mt-1 space-y-0.5">
+                            {analyses[packshot.id].suggestions.map((suggestion: string, idx: number) => (
+                              <li key={idx} className="text-gray-700 flex items-start gap-1">
+                                <span className="text-purple-500">•</span>
+                                {suggestion}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -328,3 +382,4 @@ export default function PackshotUploader({ packshots, onPackshotsChange, maxPack
     </div>
   );
 }
+
